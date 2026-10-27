@@ -18,6 +18,21 @@ Because sudo uses a restricted search path (secure_path), choose one of the two 
 ### Option 1: Direct Path (No extra setup)
 
 Run directly using the binary location installed by `pipx`:
+
 ```bash
 sudo -E ~/.local/bin/clavister-vpn connect oneconnect.org.com
+```
+
+### Option 2: Symlink (Recommended for shorthand usage)
+
+Create a symlink to `/usr/local/bin` once:
+
+```bash
+sudo ln -sf ~/.local/bin/clavister-vpn /usr/local/bin/clavister-vpn
+```
+
+Then connect from anywhere with:
+
+```bash
+sudo -E clavister-vpn connect oneconnect.org.com
 ```
