@@ -12,6 +12,8 @@ import sys
 import urllib.parse
 import xml.etree.ElementTree as ET
 import requests
+import re
+import shutil
 
 CONFIG_DIR = os.path.expanduser("~/.config/clavister-vpn")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
@@ -278,6 +280,59 @@ def cmd_menu():
     elif choice == "View Status":
         subprocess.Popen(["notify-send", "Clavister VPN", "VPN is currently connected and active."])
 
+
+def cmd_setup_waybar():
+    config_path = os.path.expanduser("~/.config/waybar/config.jsonc")
+    if not os.path.exists(config_path):
+        config_path = os.path.expanduser("~/.config/waybar/config")
+        if not os.path.exists(config_path):
+            print("[-] Could not find Waybar configuration file.")
+            return
+
+    with open(config_path, "r") as f:
+        content = f.read()
+
+    if '"custom/clavister-vpn"' in content:
+        print("[*] Waybar config already contains the VPN module. Skipping.")
+        return
+
+    # Create a backup
+    backup_path = config_path + ".backup"
+    shutil.copy(config_path, backup_path)
+    print(f"[*] Created backup of Waybar config at {backup_path}")
+
+    # Inject into modules-right
+    content = re.sub(
+        r'("modules-right"\s*:\s*\[)', 
+        r'\1\n        "custom/clavister-vpn",', 
+        content, 
+        count=1
+    )
+
+    # Append module definition before the final closing brace
+    module_def = """    ,
+    "custom/clavister-vpn": {
+        "exec": "clavister-vpn status --waybar",
+        "return-type": "json",
+        "interval": 3,
+        "format": "{icon}",
+        "format-icons": ["󰌆", "󰌋"]
+    }
+    """
+    last_brace = content.rfind('}')
+    if last_brace != -1:
+        content = content[:last_brace] + module_def + content[last_brace:]
+        
+        with open(config_path, "w") as f:
+            f.write(content)
+        print("[+] Successfully injected Waybar module.")
+        
+        print("[*] Restarting Waybar to apply changes...")
+        subprocess.run(["killall", "waybar"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(["waybar"], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        print("[-] Failed to parse config file structure.")
+
 def main():
     parser = argparse.ArgumentParser(description="Clavister OneConnect OIDC VPN Client for Linux")
     subparsers = parser.add_subparsers(dest="command")
@@ -292,6 +347,8 @@ def main():
 
     subparsers.add_parser("menu", help="Launch GUI action menu (rofi/wofi)")
 
+    subparsers.add_parser("setup-waybar", help="Automatically inject Waybar configuration")
+
     args = parser.parse_args()
 
     if args.command == "connect":
@@ -302,6 +359,8 @@ def main():
         cmd_status(args.waybar)
     elif args.command == "menu":
         cmd_menu()
+    elif args.command == "setup-waybar":
+        cmd_setup_waybar()
     else:
         parser.print_help()
 
