@@ -8,3 +8,16 @@ Install directly via `pipx`:
 
 ```bash
 pipx install git+[https://github.com/fenomeno1991/clavister-oidc-vpn.git](https://github.com/fenomeno1991/clavister-oidc-vpn.git)
+```
+## Connect to VPN
+
+Running the tool requires `sudo -E` because it binds to local port 80 to capture the Entra ID OAuth callback and initiates the `openconnect` network tunnel (the -E flag preserves your user session environment so your web browser can open for login).
+
+Because sudo uses a restricted search path (secure_path), choose one of the two methods below to run it:
+
+### Option 1: Direct Path (No extra setup)
+
+Run directly using the binary location installed by `pipx`:
+```bash
+sudo -E ~/.local/bin/clavister-vpn connect oneconnect.org.com
+```

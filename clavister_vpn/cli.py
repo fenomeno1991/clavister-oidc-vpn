@@ -253,25 +253,28 @@ def cmd_menu():
     connected = is_connected()
     menu_options = "Disconnect VPN\nView Status" if connected else "Connect VPN"
     
-    # Check for rofi or wofi
-    launcher = "rofi" if shutil.which("rofi") else ("wofi" if shutil.which("wofi") else None)
-    if not launcher:
-        print("[-] Neither rofi nor wofi found for GUI menu.")
-        return
-
-    if launcher == "rofi":
+    # Check for available dmenu-compatible launchers
+    launcher = None
+    if shutil.which("walker"):
+        cmd = ["walker", "--dmenu"]
+    elif shutil.which("rofi"):
         cmd = ["rofi", "-dmenu", "-p", "Clavister VPN"]
-    else:
+    elif shutil.which("wofi"):
         cmd = ["wofi", "--dmenu", "--prompt", "Clavister VPN"]
+    elif shutil.which("fuzzel"):
+        cmd = ["fuzzel", "--dmenu"]
+    else:
+        print("[-] No supported launcher found (walker, rofi, wofi, fuzzel).")
+        return
 
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     choice, _ = proc.communicate(input=menu_options)
     choice = choice.strip()
 
     if choice == "Connect VPN":
-        subprocess.Popen(["sudo", "-E", sys.argv[0], "connect"])
+        subprocess.Popen(["sudo", "-E", "/usr/local/bin/clavister-vpn", "connect"])
     elif choice == "Disconnect VPN":
-        subprocess.Popen(["sudo", sys.argv[0], "disconnect"])
+        subprocess.Popen(["sudo", "/usr/local/bin/clavister-vpn", "disconnect"])
     elif choice == "View Status":
         subprocess.Popen(["notify-send", "Clavister VPN", "VPN is currently connected and active."])
 
