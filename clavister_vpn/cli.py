@@ -76,7 +76,7 @@ def get_server(args_server):
     if "last_server" in cfg:
         return cfg["last_server"]
     # Default prompt if nothing found
-    server = input("Enter Clavister VPN Gateway (e.g. oc.exitsolution.se): ").strip()
+    server = input("Enter Clavister VPN Gateway (e.g. oneconnect.org.com): ").strip()
     if not server:
         print("[-] Error: Gateway address is required.")
         sys.exit(1)
