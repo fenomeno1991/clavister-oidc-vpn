@@ -7,7 +7,7 @@ A lightweight Linux CLI and status bar helper for Clavister firewalls configured
 Install directly via `pipx`:
 
 ```bash
-pipx install git+[https://github.com/fenomeno1991/clavister-oidc-vpn.git](https://github.com/fenomeno1991/clavister-oidc-vpn.git)
+pipx install git+https://github.com/fenomeno1991/clavister-oidc-vpn.git
 ```
 ## Connect to VPN
 

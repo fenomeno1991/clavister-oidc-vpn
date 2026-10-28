@@ -19,6 +19,7 @@ CONFIG_DIR = os.path.expanduser("~/.config/clavister-vpn")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 USER_AGENT = "Clavister OneConnect VPN"
 REDIRECT_URI = "http://127.0.0.1/oneconnect/oauth/"
+OMARCHY_SHELL_CONFIG = os.path.expanduser("~/.config/omarchy/shell.json")
 
 auth_code = None
 
@@ -241,7 +242,8 @@ def cmd_status(waybar=False):
     connected = is_connected()
     if waybar:
         if connected:
-            out = {"text": " 󰌋 VPN", "tooltip": "Clavister VPN: Connected", "class": "connected"}
+            # "active" highlights the module in the Omarchy shell bar
+            out = {"text": " 󰌋 VPN", "tooltip": "Clavister VPN: Connected", "class": ["connected", "active"]}
         else:
             out = {"text": " 󰌆 ", "tooltip": "Clavister VPN: Disconnected", "class": "disconnected"}
         print(json.dumps(out))
@@ -250,6 +252,17 @@ def cmd_status(waybar=False):
             print("[+] Status: Connected (tun0 active)")
         else:
             print("[-] Status: Disconnected")
+
+def run_in_terminal(command):
+    for term in ("xdg-terminal-exec", "foot", "alacritty", "kitty", "ghostty"):
+        if shutil.which(term):
+            break
+    else:
+        subprocess.Popen(["notify-send", "Clavister VPN", "No terminal emulator found."])
+        return
+    flag = "-e" if term in ("alacritty", "ghostty") else None
+    argv = [term] + ([flag] if flag else []) + ["bash", "-c", command]
+    subprocess.Popen(argv, start_new_session=True)
 
 def cmd_menu():
     connected = is_connected()
@@ -273,10 +286,13 @@ def cmd_menu():
     choice, _ = proc.communicate(input=menu_options)
     choice = choice.strip()
 
+    # Launched from the bar there is no tty for sudo to prompt on, so run in a terminal.
+    # sudo's secure_path won't include ~/.local/bin, so pass an absolute path.
+    exe = shutil.which("clavister-vpn") or "/usr/local/bin/clavister-vpn"
     if choice == "Connect VPN":
-        subprocess.Popen(["sudo", "-E", "/usr/local/bin/clavister-vpn", "connect"])
+        run_in_terminal(f"sudo -E {exe} connect")
     elif choice == "Disconnect VPN":
-        subprocess.Popen(["sudo", "/usr/local/bin/clavister-vpn", "disconnect"])
+        run_in_terminal(f"sudo {exe} disconnect; sleep 2")
     elif choice == "View Status":
         subprocess.Popen(["notify-send", "Clavister VPN", "VPN is currently connected and active."])
 
@@ -315,8 +331,8 @@ def cmd_setup_waybar():
         "exec": "clavister-vpn status --waybar",
         "return-type": "json",
         "interval": 3,
-        "format": "{icon}",
-        "format-icons": ["󰌆", "󰌋"]
+        "format": "{}",
+        "on-click": "clavister-vpn menu"
     }
     """
     last_brace = content.rfind('}')
@@ -333,6 +349,40 @@ def cmd_setup_waybar():
     else:
         print("[-] Failed to parse config file structure.")
 
+def cmd_setup_omarchy():
+    with open(OMARCHY_SHELL_CONFIG, "r") as f:
+        cfg = json.load(f)
+
+    right = cfg.setdefault("bar", {}).setdefault("layout", {}).setdefault("right", [])
+    if any(m.get("id") == "clavister-vpn" for m in right):
+        print("[*] Omarchy bar already contains the VPN module. Skipping.")
+        return
+
+    backup_path = OMARCHY_SHELL_CONFIG + ".backup"
+    shutil.copy(OMARCHY_SHELL_CONFIG, backup_path)
+    print(f"[*] Created backup of Omarchy shell config at {backup_path}")
+
+    right.insert(0, {
+        "id": "clavister-vpn",
+        "type": "command",
+        "exec": "clavister-vpn status --waybar",
+        "interval": 3,
+        "tooltip": "Clavister VPN",
+        "onClick": "clavister-vpn menu",
+    })
+
+    # The shell hot-reloads shell.json on save, no restart needed
+    with open(OMARCHY_SHELL_CONFIG, "w") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    print("[+] Successfully added VPN module to the Omarchy bar.")
+
+def cmd_setup_bar():
+    if os.path.exists(OMARCHY_SHELL_CONFIG):
+        cmd_setup_omarchy()
+    else:
+        cmd_setup_waybar()
+
 def main():
     parser = argparse.ArgumentParser(description="Clavister OneConnect OIDC VPN Client for Linux")
     subparsers = parser.add_subparsers(dest="command")
@@ -347,6 +397,7 @@ def main():
 
     subparsers.add_parser("menu", help="Launch GUI action menu (rofi/wofi)")
 
+    subparsers.add_parser("setup-bar", help="Add the VPN status icon to the Omarchy bar (or Waybar)")
     subparsers.add_parser("setup-waybar", help="Automatically inject Waybar configuration")
 
     args = parser.parse_args()
@@ -359,6 +410,8 @@ def main():
         cmd_status(args.waybar)
     elif args.command == "menu":
         cmd_menu()
+    elif args.command == "setup-bar":
+        cmd_setup_bar()
     elif args.command == "setup-waybar":
         cmd_setup_waybar()
     else:
