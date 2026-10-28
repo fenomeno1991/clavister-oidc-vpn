@@ -19,3 +19,6 @@ classifiers = [
 
 [project.scripts]
 clavister-vpn = "clavister_vpn.cli:main"
+
+[tool.setuptools.package-data]
+clavister_vpn = ["omarchy/*"]

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.fenomeno1991.clavister-vpn",
+  "name": "Clavister VPN",
+  "version": "1.0.0",
+  "author": "fenomeno1991",
+  "description": "Clavister OneConnect VPN status, with connect, disconnect and remembered gateways in a dropdown.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Clavister VPN",
+    "description": "Connect to and switch between Clavister VPN gateways",
+    "category": "Network",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  },
+  "license": "MIT"
+}

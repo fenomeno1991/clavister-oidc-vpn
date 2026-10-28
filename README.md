@@ -36,3 +36,59 @@ Then connect from anywhere with:
 ```bash
 sudo -E clavister-vpn connect oneconnect.org.com
 ```
+
+Gateways you connect to are remembered, most recent first. Running `connect` without an address uses the last one. Remove one with `clavister-vpn forget <address>`.
+
+## Status bar icon
+
+### Install
+
+1. Install the tool with `pipx` (see [Installation](#installation)).
+2. Add the icon to your bar. Run this as your normal user, without `sudo`:
+
+   ```bash
+   clavister-vpn setup-bar
+   ```
+
+On [Omarchy](https://omarchy.org/) this installs a bar widget to `~/.config/omarchy/plugins/io.github.fenomeno1991.clavister-vpn/` and puts it first on the right side of the bar. It shows up straight away; no restart needed. You can move it like any other widget, for example with `omarchy bar move io.github.fenomeno1991.clavister-vpn --section right`.
+
+Without the Omarchy shell, `setup-bar` adds a module to your Waybar config instead (a backup is saved next to it) and restarts Waybar.
+
+### Using it
+
+The icon shows whether the VPN is connected, and pulses while a connection is being set up. Clicking it opens a dropdown in the style of the Wi-Fi menu, where you can:
+
+- toggle the VPN on and off (connects to the last used gateway)
+- click a remembered gateway to connect to it, or to disconnect if it's the active one
+- hover a gateway and click ✕ to forget it
+- type a new gateway address and press Enter to connect to it
+
+Keyboard: `j`/`k` or arrow keys move between gateways, Enter connects, `a` jumps to the address field, Esc closes.
+
+Connecting and disconnecting open a terminal window, so `sudo` can ask for your password and you can follow the browser login. Keep that window open while you're connected; closing it ends the VPN session.
+
+### Keybindings
+
+The widget can also be controlled from the command line, which makes it easy to bind to keys:
+
+```bash
+omarchy-shell io.github.fenomeno1991.clavister-vpn up                  # connect to the last used gateway
+omarchy-shell io.github.fenomeno1991.clavister-vpn up vpn.example.com  # connect to a specific gateway
+omarchy-shell io.github.fenomeno1991.clavister-vpn down                # disconnect
+omarchy-shell io.github.fenomeno1991.clavister-vpn toggle              # open/close the dropdown
+```
+
+### Updating
+
+Reinstall, then run `setup-bar` again. If the widget changed, it restarts the Omarchy shell so the new version loads (the shell's own hot reload keeps running the old one):
+
+```bash
+pipx install --force git+https://github.com/fenomeno1991/clavister-oidc-vpn.git
+clavister-vpn setup-bar
+```
+
+### Removing
+
+```bash
+omarchy plugin remove io.github.fenomeno1991.clavister-vpn
+```
