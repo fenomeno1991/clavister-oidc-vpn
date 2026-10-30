@@ -2,6 +2,23 @@
 
 A lightweight Linux CLI and status bar helper for Clavister firewalls configured with Microsoft Entra ID (OIDC) authentication.
 
+## Requirements
+
+- [`openconnect`](https://www.infradead.org/openconnect/), which sets up the VPN tunnel. The tool does not install it.
+- `pipx`, to install the tool (see below).
+
+On Arch Linux / Omarchy:
+
+```bash
+sudo pacman -S openconnect python-pipx
+```
+
+On Debian / Ubuntu:
+
+```bash
+sudo apt install openconnect pipx
+```
+
 ## Installation
 
 Install directly via `pipx`:
