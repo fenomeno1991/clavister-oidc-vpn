@@ -54,6 +54,8 @@ Then connect from anywhere with:
 sudo -E clavister-vpn connect oneconnect.org.com
 ```
 
+If the gateway doesn't offer OIDC login (for example plain username/password or certificate authentication), the tool falls back to OpenConnect's standard AnyConnect login, which asks for your credentials in the terminal instead of opening a browser.
+
 Gateways you connect to are remembered, most recent first. Running `connect` without an address uses the last one. Remove one with `clavister-vpn forget <address>`.
 
 ## Status bar icon
@@ -82,7 +84,7 @@ The icon shows whether the VPN is connected, and pulses while a connection is be
 
 Keyboard: `j`/`k` or arrow keys move between gateways, Enter connects, `a` jumps to the address field, Esc closes.
 
-Connecting and disconnecting open a terminal window, so `sudo` can ask for your password and you can follow the browser login. Keep that window open while you're connected; closing it ends the VPN session.
+Connecting and disconnecting open a terminal window, so `sudo` can ask for your password and you can follow the browser login (or type your VPN credentials, on gateways without OIDC). Keep that window open while you're connected; closing it ends the VPN session.
 
 ### Keybindings
 

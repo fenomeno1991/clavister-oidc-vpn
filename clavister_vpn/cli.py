@@ -171,10 +171,8 @@ def cmd_connect(server_arg):
         print(f"[*] Closing the current VPN session ({active_server() or 'unknown gateway'})...")
         cmd_disconnect()
 
-    try:
-        server_listener = http.server.HTTPServer(("127.0.0.1", 80), OAuthCallbackHandler)
-    except PermissionError:
-        print("[-] Error: Binding to port 80 requires root privileges. Please run with sudo -E.")
+    if os.geteuid() != 0:
+        print("[-] Error: Connecting requires root privileges. Please run with sudo -E.")
         sys.exit(1)
 
     session = requests.Session()
@@ -195,18 +193,29 @@ def cmd_connect(server_arg):
         f'<group-access>{vpn_url}/</group-access>'
         '</config-auth>'
     )
-    print(f"[*] Requesting OIDC parameters & session nonce from {server}...")
+    print(f"[*] Requesting authentication method from {server}...")
     try:
         r = session.post(f"{vpn_url}/", data=init_xml)
-        root = ET.fromstring(r.text)
-        discovery_url = root.find(".//discovery-endpoint").text.strip()
-        client_id = root.find(".//client-id").text.strip()
-        nonce = root.find(".//nonce").text.strip()
-    except Exception as e:
-        print(f"[-] Failed to parse OIDC configuration from gateway: {e}")
+    except requests.RequestException as e:
+        print(f"[-] Could not reach gateway {server}: {e}")
         sys.exit(1)
 
-    print(f"[+] Got session Nonce successfully.")
+    oidc = parse_oidc_config(r.text)
+    if oidc is None:
+        # No OIDC offered (e.g. username/password or certificate auth):
+        # openconnect handles the standard AnyConnect login prompts itself.
+        print("[*] Gateway does not offer OIDC login. Falling back to standard login via OpenConnect...")
+        run_openconnect(vpn_url)
+        return
+    discovery_url, client_id, nonce = oidc
+
+    try:
+        server_listener = http.server.HTTPServer(("127.0.0.1", 80), OAuthCallbackHandler)
+    except OSError as e:
+        print(f"[-] Error: Could not listen on port 80 for the login callback: {e}")
+        sys.exit(1)
+
+    print(f"[+] Got OIDC configuration and session nonce.")
     oidc_cfg = requests.get(discovery_url).json()
     authorize_endpoint = oidc_cfg["authorization_endpoint"]
     token_endpoint = oidc_cfg["token_endpoint"]
@@ -267,18 +276,31 @@ def cmd_connect(server_arg):
     raw_token = cookie.split("=", 1)[1] if cookie.startswith("webvpn=") else cookie
     formatted_cookie = f"webvpn={raw_token}"
     print(f"[+] VPN session established. Launching OpenConnect tunnel...")
+    run_openconnect(vpn_url, formatted_cookie)
 
-    proc = subprocess.Popen(
-        [
-            "openconnect",
-            "--protocol=anyconnect",
-            f"--useragent={USER_AGENT}",
-            "--cookie-on-stdin",
-            vpn_url,
-        ],
-        stdin=subprocess.PIPE,
-    )
-    proc.communicate(input=f"{formatted_cookie}\n".encode())
+def parse_oidc_config(text):
+    # (discovery_url, client_id, nonce) when the gateway offers OIDC, else None
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError:
+        return None
+    values = []
+    for tag in ("discovery-endpoint", "client-id", "nonce"):
+        el = root.find(f".//{tag}")
+        if el is None or not (el.text or "").strip():
+            return None
+        values.append(el.text.strip())
+    return tuple(values)
+
+def run_openconnect(vpn_url, cookie=None):
+    # vpn_url stays a plain argument: active_server() reads it back from the command line
+    argv = ["openconnect", "--protocol=anyconnect", f"--useragent={USER_AGENT}"]
+    if cookie:
+        proc = subprocess.Popen(argv + ["--cookie-on-stdin", vpn_url], stdin=subprocess.PIPE)
+        proc.communicate(input=f"{cookie}\n".encode())
+    else:
+        # Interactive: openconnect prompts for username/password/MFA in this terminal
+        subprocess.run(argv + [vpn_url])
 
 def cmd_disconnect():
     print("[*] Terminating active OpenConnect sessions...")
